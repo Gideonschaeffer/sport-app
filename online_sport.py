@@ -10,47 +10,59 @@ CARDIO_COLOR = "#FF5733"
 KRACHT_COLOR = "#337BFF"
 
 # ---------------- DATA ----------------
-df = pd.read_excel("sport_schema.xlsx")
+df = pd.read_excel("sport_schema.xlsx")  # 12-dagen schema
 
 # ---------------- GEBRUIKERS ----------------
-if os.path.exists("users.csv") and os.path.getsize("users.csv") > 0:
-    users_df = pd.read_csv("users.csv")
-    # Kolomnamen strippen om spaties te verwijderen
-    users_df.columns = [col.strip() for col in users_df.columns]
-else:
-    st.error("❌ users.csv niet gevonden of leeg")
+users_file = "users.csv"
+
+if not os.path.exists(users_file):
+    st.error("❌ users.csv niet gevonden!")
     st.stop()
 
-# ---------------- GEBRUIKER INLOG ----------------
-username = st.text_input("Voer je naam in:")
-if not username:
+users_df = pd.read_csv(users_file)
+users_df.columns = [col.strip() for col in users_df.columns]
+
+# Controleer kolommen
+expected_cols = ["naam", "password"]
+for col in expected_cols:
+    if col not in users_df.columns:
+        st.error(f"❌ Kolom '{col}' niet gevonden in CSV!")
+        st.stop()
+
+# ---------------- LOGIN ----------------
+naam = st.text_input("Voer je naam in:")
+if not naam:
     st.warning("👤 Voer je naam in om verder te gaan")
     st.stop()
 
-if username not in users_df["naam"].values:
+if naam not in users_df["naam"].values:
     st.error("❌ Onbekende gebruiker")
     st.stop()
 
-password = st.text_input("Voer je wachtwoord in:", type="password")
+password = st.text_input("Voer je password in:", type="password")
 if not password:
-    st.warning("🔒 Voer je wachtwoord in om verder te gaan")
+    st.warning("🔒 Voer je password in om verder te gaan")
     st.stop()
 
-correct_password = users_df.loc[users_df["naam"] == username, "password"].values[0]
-if password != correct_pasword:
+correct_password = users_df.loc[users_df["naam"] == naam, "password"].values[0]
+if password != correct_password:
     st.error("❌ Onjuist password")
     st.stop()
 
-st.title(f"Welkom, {username} 🏋️‍♂️")
+st.success(f"Welkom, {naam} 🏋️‍♂️")
 
 # ---------------- PROGRESS BESTAND ----------------
 if os.path.exists("progress.csv") and os.path.getsize("progress.csv") > 0:
     progress_df = pd.read_csv("progress.csv")
+    # Zorg dat alle kolommen bestaan
     for col in ["username", "dag", "cardio", "kracht"]:
         if col not in progress_df.columns:
             progress_df[col] = 0
 else:
     progress_df = pd.DataFrame(columns=["username", "dag", "cardio", "kracht"])
+
+# Map naam -> username voor progress.csv
+username = naam
 
 # ---------- NIEUWE GEBRUIKER → 12 DAGEN ----------
 if username not in progress_df["username"].values:
@@ -68,14 +80,12 @@ completed_days = progress_df[
 ]["dag"].nunique()
 
 total_days = df["dag"].nunique()
-
 st.progress(completed_days / total_days)
 st.write(f"✅ {completed_days} van {total_days} dagen voltooid")
 
 # ---------- DAG SELECTEREN ----------
 dag = st.selectbox("Selecteer een dag:", df["dag"].unique())
 oef = df[df["dag"] == dag].iloc[0]
-
 st.write(f"**Wat te doen:** {oef['wat te doen']}")
 
 row_index = progress_df[
