@@ -56,7 +56,6 @@ def login_user(name, password):
         return False
     st.session_state.logged_in = True
     st.session_state.username = name
-    st.success(f"Welkom, {name} 🏋️‍♂️")
     st.experimental_rerun()
     return True
 
@@ -102,12 +101,7 @@ if not st.session_state.logged_in:
 # ---------------- HOOFDAPP ----------------
 if st.session_state.logged_in:
     username = st.session_state.username
-
-    # UITLOGGEN
-    if st.button("Uitloggen"):
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.experimental_rerun()
+    st.title(f"Welkom, {username} 🏋️‍♂️")
 
     # INITIALISEER PROGRESSIE
     initialize_progress(username)
