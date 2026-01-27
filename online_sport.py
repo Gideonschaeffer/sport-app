@@ -12,10 +12,31 @@ KRACHT_COLOR = "#337BFF"
 # ---------------- DATA ----------------
 df = pd.read_excel("sport_schema.xlsx")
 
-# ---------------- GEBRUIKER ----------------
+# ---------------- GEBRUIKERS ----------------
+if os.path.exists("users.csv") and os.path.getsize("users.csv") > 0:
+    users_df = pd.read_csv("users.csv")
+else:
+    st.error("❌ users.csv niet gevonden of leeg")
+    st.stop()
+
+# ---------------- GEBRUIKER INLOG ----------------
 username = st.text_input("Voer je naam in:")
 if not username:
     st.warning("👤 Voer je naam in om verder te gaan")
+    st.stop()
+
+if username not in users_df["username"].values:
+    st.error("❌ Onbekende gebruiker")
+    st.stop()
+
+password = st.text_input("Voer je wachtwoord in:", type="password")
+if not password:
+    st.warning("🔒 Voer je wachtwoord in om verder te gaan")
+    st.stop()
+
+correct_password = users_df.loc[users_df["username"] == username, "password"].values[0]
+if password != correct_pasword:
+    st.error("❌ Onjuist safeword")
     st.stop()
 
 st.title(f"Welkom, {username} 🏋️‍♂️")
@@ -23,7 +44,6 @@ st.title(f"Welkom, {username} 🏋️‍♂️")
 # ---------------- PROGRESS BESTAND ----------------
 if os.path.exists("progress.csv") and os.path.getsize("progress.csv") > 0:
     progress_df = pd.read_csv("progress.csv")
-    # Controleer kolommen en maak aan als ze ontbreken
     for col in ["username", "dag", "cardio", "kracht"]:
         if col not in progress_df.columns:
             progress_df[col] = 0
@@ -31,7 +51,7 @@ else:
     progress_df = pd.DataFrame(columns=["username", "dag", "cardio", "kracht"])
 
 # ---------- NIEUWE GEBRUIKER → 12 DAGEN ----------
-if username not in progress_df["username"].unique():
+if username not in progress_df["username"].values:
     new_rows = pd.DataFrame([
         {"username": username, "dag": dag, "cardio": 0, "kracht": 0}
         for dag in df["dag"].unique()
@@ -64,7 +84,6 @@ row_index = progress_df[
 # ---------- RUSTDAG ----------
 if str(oef["wat te doen"]).lower() == "rust":
     st.info("Vandaag is een rustdag 😴")
-
 else:
     cardio_link = oef["cardio"] if pd.notna(oef["cardio"]) and str(oef["cardio"]).strip() else None
     kracht_link = oef["kracht"] if pd.notna(oef["kracht"]) and str(oef["kracht"]).strip() else None
