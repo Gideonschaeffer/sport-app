@@ -13,8 +13,8 @@ KRACHT_COLOR = "#337BFF"
 df = pd.read_excel("sport_schema.xlsx")
 
 # ---------------- GEBRUIKERS ----------------
-if os.path.exists("users.csv") and os.path.getsize("users.csv") > 0:
-    users_df = pd.read_csv("users.csv")
+if os.path.exists("user.csv") and os.path.getsize("user.csv") > 0:
+    users_df = pd.read_csv("user.csv")
     # Kolomnamen strippen om spaties te verwijderen
     users_df.columns = [col.strip() for col in users_df.columns]
 else:
@@ -22,12 +22,12 @@ else:
     st.stop()
 
 # ---------------- GEBRUIKER INLOG ----------------
-naam = st.text_input("Voer je naam in:")
-if not naam:
+username = st.text_input("Voer je naam in:")
+if not username:
     st.warning("👤 Voer je naam in om verder te gaan")
     st.stop()
 
-if naam not in users_df["naam"].values:
+if username not in users_df["naam"].values:
     st.error("❌ Onbekende gebruiker")
     st.stop()
 
@@ -36,7 +36,7 @@ if not password:
     st.warning("🔒 Voer je wachtwoord in om verder te gaan")
     st.stop()
 
-correct_password = users_df.loc[users_df["naam"] == naam, "password"].values[0]
+correct_password = users_df.loc[users_df["naam"] == username, "password"].values[0]
 if password != correct_pasword:
     st.error("❌ Onjuist password")
     st.stop()
