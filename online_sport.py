@@ -15,6 +15,8 @@ df = pd.read_excel("sport_schema.xlsx")
 # ---------------- GEBRUIKERS ----------------
 if os.path.exists("users.csv") and os.path.getsize("users.csv") > 0:
     users_df = pd.read_csv("users.csv")
+    # Kolomnamen strippen om spaties te verwijderen
+    users_df.columns = [col.strip() for col in users_df.columns]
 else:
     st.error("❌ users.csv niet gevonden of leeg")
     st.stop()
@@ -36,7 +38,7 @@ if not password:
 
 correct_password = users_df.loc[users_df["username"] == username, "password"].values[0]
 if password != correct_pasword:
-    st.error("❌ Onjuist safeword")
+    st.error("❌ Onjuist password")
     st.stop()
 
 st.title(f"Welkom, {username} 🏋️‍♂️")
