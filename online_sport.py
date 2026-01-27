@@ -13,8 +13,8 @@ KRACHT_COLOR = "#337BFF"
 df = pd.read_excel("sport_schema.xlsx")
 
 # ---------------- GEBRUIKERS ----------------
-if os.path.exists("user.csv") and os.path.getsize("user.csv") > 0:
-    users_df = pd.read_csv("user.csv")
+if os.path.exists("users.csv") and os.path.getsize("users.csv") > 0:
+    users_df = pd.read_csv("users.csv")
     # Kolomnamen strippen om spaties te verwijderen
     users_df.columns = [col.strip() for col in users_df.columns]
 else:
