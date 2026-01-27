@@ -8,7 +8,7 @@ st.set_page_config(page_title="Sport App", layout="centered")
 # ---------------- BESTANDEN ----------------
 USERS_FILE = "users.csv"
 PROGRESS_FILE = "progress.csv"
-SPORT_FILE = "sport_schema.xlsx"  # 12-dagen schema
+SPORT_FILE = "sport_schema.xlsx"
 
 # ---------------- DATA ----------------
 df = pd.read_excel(SPORT_FILE)
@@ -21,7 +21,7 @@ users_df.columns = [col.strip() for col in users_df.columns]
 
 # ---------------- PROGRESS ----------------
 if not os.path.exists(PROGRESS_FILE):
-    pd.DataFrame(columns=["username", "dag", "cardio", "kracht"]).to_csv(PROGRESS_FILE, index=False)
+    pd.DataFrame(columns=["username", "dag", "cardio", "kracht", "rust_done"]).to_csv(PROGRESS_FILE, index=False)
 progress_df = pd.read_csv(PROGRESS_FILE)
 progress_df.columns = [col.strip() for col in progress_df.columns]
 
@@ -32,7 +32,6 @@ if "logged_in" not in st.session_state:
 
 # ---------------- FUNCTIES ----------------
 def register_user(name, password):
-    """Voeg een nieuwe gebruiker toe."""
     global users_df
     if not name or not password:
         st.warning("⚠️ Vul zowel naam als wachtwoord in")
@@ -46,7 +45,6 @@ def register_user(name, password):
     st.success(f"✅ Account aangemaakt voor {name}!")
 
 def login_user(name, password):
-    """Log een bestaande gebruiker in."""
     if name not in users_df["naam"].values:
         st.error("❌ Onbekende gebruiker")
         return False
@@ -60,26 +58,22 @@ def login_user(name, password):
     return True
 
 def initialize_progress(username):
-    """Maak progressie aan voor een nieuwe gebruiker."""
     global progress_df
     if username not in progress_df["username"].values:
-        new_rows = pd.DataFrame([{"username": username, "dag": dag, "cardio": 0, "kracht": 0} for dag in df["dag"].unique()])
+        new_rows = pd.DataFrame([{"username": username, "dag": dag, "cardio": 0, "kracht": 0, "rust_done":0} for dag in df["dag"].unique()])
         progress_df = pd.concat([progress_df, new_rows], ignore_index=True)
         progress_df.to_csv(PROGRESS_FILE, index=False)
 
 def mark_done(username, dag, oefening):
-    """Markeer Cardio of Kracht als voltooid."""
     global progress_df
-    col = "cardio" if oefening == "cardio" else "kracht"
     idx = progress_df[(progress_df["username"] == username) & (progress_df["dag"] == dag)].index[0]
-    progress_df.loc[idx, col] = 1
+    progress_df.loc[idx, oefening] = 1
     progress_df.to_csv(PROGRESS_FILE, index=False)
 
 def get_completed_days(username):
-    """Tel het aantal dagen met minstens één oefening voltooid."""
     done = progress_df[
         (progress_df["username"] == username) &
-        ((progress_df["cardio"] == 1) | (progress_df["kracht"] == 1))
+        ((progress_df["cardio"] == 1) | (progress_df["kracht"] == 1) | (progress_df["rust_done"]==1))
     ]["dag"].nunique()
     return done
 
@@ -106,10 +100,11 @@ if st.session_state.logged_in:
     # INITIALISEER PROGRESSIE
     initialize_progress(username)
 
-    # GEBRUIKER KLEUREN
+    # KLEUREN
     st.sidebar.subheader("Kies je kleuren:")
     cardio_color = st.sidebar.color_picker("Cardio kleur", "#FF5733")
     kracht_color = st.sidebar.color_picker("Kracht kleur", "#337BFF")
+    rust_color = st.sidebar.color_picker("Rustdag kleur", "#A9A9A9")
 
     # VOORTGANG & BADGES
     completed_days = get_completed_days(username)
@@ -125,9 +120,14 @@ if st.session_state.logged_in:
     oef = df[df["dag"] == dag].iloc[0]
     st.write(f"**Wat te doen:** {oef['wat te doen']}")
 
-    # RUSTDAG
+    row_idx = progress_df[(progress_df["username"]==username) & (progress_df["dag"]==dag)].index[0]
+
+    # ---------------- RUSTDAG ----------------
     if str(oef["wat te doen"]).lower() == "rust":
-        st.info("Vandaag is een rustdag 😴")
+        rust_done = progress_df.loc[row_idx, "rust_done"]
+        if st.button("✅ Rustdag afronden" if not rust_done else "Rustdag ✅", key=f"rust_{dag}"):
+            mark_done(username, dag, "rust_done")
+            st.success("♻️ Rustdag afgevinkt!")
     else:
         cardio_link = oef["cardio"] if pd.notna(oef["cardio"]) and str(oef["cardio"]).strip() else None
         kracht_link = oef["kracht"] if pd.notna(oef["kracht"]) and str(oef["kracht"]).strip() else None
@@ -136,15 +136,15 @@ if st.session_state.logged_in:
         # CSS
         st.markdown("""
         <style>
-        .btn {display: inline-block; padding: 12px 28px; font-size:16px; color:white !important; text-decoration:none; border-radius:10px; margin:6px 0; transition:0.2s ease-in-out;}
-        .btn:hover {transform: scale(1.05); opacity:0.85;}
-        .btn-container {text-align:center; margin-top:10px;}
+        .btn {display:inline-block;padding:12px 28px;font-size:16px;color:white !important;text-decoration:none;border-radius:10px;margin:6px 0;transition:0.2s ease-in-out;}
+        .btn:hover {transform:scale(1.05);opacity:0.85;}
+        .btn-container {text-align:center;margin-top:10px;}
         </style>
         """, unsafe_allow_html=True)
 
         # CARDIO
         if cardio_link:
-            done = progress_df.loc[(progress_df["username"]==username) & (progress_df["dag"]==dag), "cardio"].values[0]
+            done = progress_df.loc[row_idx, "cardio"]
             btn_text = "🏃‍♂️ Cardio ✅" if done else "🏃‍♂️ Start Cardio"
             if st.button(f"Cardio-{dag}", key=f"cardio_{dag}") and not done:
                 mark_done(username, dag, "cardio")
@@ -153,7 +153,7 @@ if st.session_state.logged_in:
 
         # KRACHT
         if kracht_link:
-            done = progress_df.loc[(progress_df["username"]==username) & (progress_df["dag"]==dag), "kracht"].values[0]
+            done = progress_df.loc[row_idx, "kracht"]
             btn_text = "🏋️‍♂️ Kracht ✅" if done else "🏋️‍♂️ Start Kracht"
             if st.button(f"Kracht-{dag}", key=f"kracht_{dag}") and not done:
                 mark_done(username, dag, "kracht")
