@@ -1,0 +1,12 @@
+credentials:
+  users:
+    Gideon:
+      name: Gideon Schaeffer
+      password: "1234"
+    Anna:
+      name: Anna de Vries
+      password: "wachtwoord"
+cookie:
+  name: sport_app_auth
+  key: some_random_key_123
+  expiry_days: 30
