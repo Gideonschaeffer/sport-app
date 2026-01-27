@@ -29,7 +29,7 @@ authenticator = stauth.Authenticate(
 
 # ---------------- LOGIN ----------------
 # Compatibel met streamlit-authenticator 0.3.0
-name, auth_status, username = authenticator.login(form_name="Login", location="main")
+name, auth_status, username = authenticator.login("Login", "main")
 
 # ---------------- NA LOGIN ----------------
 if auth_status:
