@@ -25,7 +25,7 @@ authenticator = stauth.Authenticate(
 )
 
 name, auth_status, username = authenticator.login(
-    form_name="Login",
+    "Login",
     location="main"
 )
 
