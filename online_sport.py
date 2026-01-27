@@ -24,10 +24,7 @@ authenticator = stauth.Authenticate(
     users_config['cookie']['expiry_days']
 )
 
-name, auth_status, username = authenticator.login(
-    "Login",
-    location="main"
-)
+name, auth_status, username = authenticator.login("Login")
 
 
 # ---------- NA LOGIN ----------
