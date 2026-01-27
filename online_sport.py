@@ -1,11 +1,9 @@
 import pandas as pd
 import streamlit as st
+import os
 
 # ---------------- PAGINA ----------------
-st.set_page_config(
-    page_title="Sport App",
-    layout="centered"
-)
+st.set_page_config(page_title="Sport App", layout="centered")
 
 # ---------------- KLEUREN ----------------
 CARDIO_COLOR = "#FF5733"
@@ -23,22 +21,19 @@ if not username:
 st.title(f"Welkom, {username} 🏋️‍♂️")
 
 # ---------------- PROGRESS BESTAND ----------------
-try:
+if os.path.exists("progress.csv") and os.path.getsize("progress.csv") > 0:
     progress_df = pd.read_csv("progress.csv")
-except FileNotFoundError:
-    progress_df = pd.DataFrame(
-        columns=["username", "dag", "cardio_done", "kracht_done"]
-    )
+    # Check kolommen, maak aan als ze ontbreken
+    for col in ["username", "dag", "cardio", "kracht"]:
+        if col not in progress_df.columns:
+            progress_df[col] = 0
+else:
+    progress_df = pd.DataFrame(columns=["username", "dag", "cardio", "kracht"])
 
 # ---------- NIEUWE GEBRUIKER → 12 DAGEN ----------
 if username not in progress_df["username"].unique():
     new_rows = pd.DataFrame([
-        {
-            "username": username,
-            "dag": dag,
-            "cardio_done": 0,
-            "kracht_done": 0
-        }
+        {"username": username, "dag": dag, "cardio": 0, "kracht": 0}
         for dag in df["dag"].unique()
     ])
     progress_df = pd.concat([progress_df, new_rows], ignore_index=True)
@@ -47,7 +42,7 @@ if username not in progress_df["username"].unique():
 # ---------- VOORTGANG ----------
 completed_days = progress_df[
     (progress_df["username"] == username) &
-    ((progress_df["cardio_done"] == 1) | (progress_df["kracht_done"] == 1))
+    ((progress_df["cardio"] == 1) | (progress_df["kracht"] == 1))
 ]["dag"].nunique()
 
 total_days = df["dag"].nunique()
@@ -100,11 +95,11 @@ else:
 
     # ---------- CARDIO ----------
     if cardio_link:
-        cardio_done = progress_df.loc[row_index, "cardio_done"]
+        cardio_done = progress_df.loc[row_index, "cardio"]
         cardio_text = "Cardio ✅" if cardio_done else "Start Cardio"
 
         if st.button(cardio_text):
-            progress_df.loc[row_index, "cardio_done"] = 1
+            progress_df.loc[row_index, "cardio"] = 1
             progress_df.to_csv("progress.csv", index=False)
             st.experimental_rerun()
 
@@ -122,11 +117,11 @@ else:
 
     # ---------- KRACHT ----------
     if kracht_link:
-        kracht_done = progress_df.loc[row_index, "kracht_done"]
+        kracht_done = progress_df.loc[row_index, "kracht"]
         kracht_text = "Kracht ✅" if kracht_done else "Start Kracht"
 
         if st.button(kracht_text):
-            progress_df.loc[row_index, "kracht_done"] = 1
+            progress_df.loc[row_index, "kracht"] = 1
             progress_df.to_csv("progress.csv", index=False)
             st.experimental_rerun()
 
