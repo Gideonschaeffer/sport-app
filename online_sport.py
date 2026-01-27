@@ -1,4 +1,4 @@
-import pandas as pd
+iimport pandas as pd
 import streamlit as st
 import os
 
@@ -16,14 +16,14 @@ sport_file = "sport_schema.xlsx"  # 12-dagen schema
 # ---------------- DATA ----------------
 df = pd.read_excel(sport_file)
 
-# Zorg dat users.csv bestaat
+# ---------------- USERS ----------------
 if not os.path.exists(users_file):
     pd.DataFrame(columns=["naam", "password"]).to_csv(users_file, index=False)
 
 users_df = pd.read_csv(users_file)
 users_df.columns = [col.strip() for col in users_df.columns]
 
-# Zorg dat progress.csv bestaat
+# ---------------- PROGRESS ----------------
 if not os.path.exists(progress_file):
     pd.DataFrame(columns=["username", "dag", "cardio", "kracht"]).to_csv(progress_file, index=False)
 
@@ -143,19 +143,20 @@ if st.session_state.logged_in:
         # ---------------- CARDIO ----------------
         if cardio_link:
             cardio_done = progress_df.loc[row_index, "cardio"]
-            cardio_text = "Cardio ✅" if cardio_done else "Start Cardio"
-
-            if st.button(cardio_text):
-                progress_df.loc[row_index, "cardio"] = 1
-                progress_df.to_csv(progress_file, index=False)
-                st.experimental_rerun()
+            if not cardio_done:
+                if st.button("Start Cardio"):
+                    progress_df.loc[row_index, "cardio"] = 1
+                    progress_df.to_csv(progress_file, index=False)
+                    st.success("✅ Cardio gemarkeerd als voltooid!")
+            else:
+                st.button("Cardio ✅", disabled=True)
 
             st.markdown(
                 f"""
                 <div class="btn-container">
                     <a class="btn" style="background-color:{CARDIO_COLOR}"
                        href="{cardio_link}" target="_blank">
-                       {cardio_text}
+                       Cardio
                     </a>
                 </div>
                 """,
@@ -165,19 +166,20 @@ if st.session_state.logged_in:
         # ---------------- KRACHT ----------------
         if kracht_link:
             kracht_done = progress_df.loc[row_index, "kracht"]
-            kracht_text = "Kracht ✅" if kracht_done else "Start Kracht"
-
-            if st.button(kracht_text):
-                progress_df.loc[row_index, "kracht"] = 1
-                progress_df.to_csv(progress_file, index=False)
-                st.experimental_rerun()
+            if not kracht_done:
+                if st.button("Start Kracht"):
+                    progress_df.loc[row_index, "kracht"] = 1
+                    progress_df.to_csv(progress_file, index=False)
+                    st.success("✅ Kracht gemarkeerd als voltooid!")
+            else:
+                st.button("Kracht ✅", disabled=True)
 
             st.markdown(
                 f"""
                 <div class="btn-container">
                     <a class="btn" style="background-color:{KRACHT_COLOR}"
                        href="{kracht_link}" target="_blank">
-                       {kracht_text}
+                       Kracht
                     </a>
                 </div>
                 """,
