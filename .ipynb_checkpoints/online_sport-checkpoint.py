@@ -22,12 +22,12 @@ else:
     st.stop()
 
 # ---------------- GEBRUIKER INLOG ----------------
-username = st.text_input("Voer je naam in:")
-if not username:
+naam = st.text_input("Voer je naam in:")
+if not naam:
     st.warning("👤 Voer je naam in om verder te gaan")
     st.stop()
 
-if username not in users_df["username"].values:
+if naam not in users_df["naam"].values:
     st.error("❌ Onbekende gebruiker")
     st.stop()
 
@@ -36,7 +36,7 @@ if not password:
     st.warning("🔒 Voer je wachtwoord in om verder te gaan")
     st.stop()
 
-correct_password = users_df.loc[users_df["username"] == username, "password"].values[0]
+correct_password = users_df.loc[users_df["naam"] == naam, "password"].values[0]
 if password != correct_pasword:
     st.error("❌ Onjuist password")
     st.stop()
