@@ -44,10 +44,14 @@ if not password:
     st.warning("🔒 Voer je password in om verder te gaan")
     st.stop()
 
-correct_password = users_df.loc[users_df["naam"] == naam, "password"].values[0]
+# Haal correct password uit CSV
+correct_password = str(users_df.loc[users_df["naam"] == naam, "password"].values[0])
+
+# Vergelijk exact, case-sensitive
 if password != correct_password:
     st.error("❌ Onjuist password")
     st.stop()
+
 
 st.success(f"Welkom, {naam} 🏋️‍♂️")
 
