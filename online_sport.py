@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 
 # --- Kleuren instellen ---
-cardio_color = "#FF5733"  # Oranje/rood voor cardio
+cardio_color = "#d40bd3"  # Paars voor cardio
 kracht_color = "#337BFF"  # Blauw voor kracht
 
 # --- Excel-bestand inladen ---
@@ -11,8 +11,8 @@ df = pd.read_excel("sport_schema.xlsx")
 
 # --- Titel en uitleg ---
 st.set_page_config(page_title="Sport App", layout="centered")
-st.title("🏋️‍♂️ Sport App")
-st.write("Kies een dag om te zien welke oefeningen je moet doen en bekijk de YouTube-video's.")
+st.title("🏋️‍♂️ Sport App 🏋️‍♂️")
+st.write("Kies een dag om te zien welke oefeningen je moet doen.")
 
 # --- Dag selecteren ---
 dag = st.selectbox("Selecteer een dag:", df['dag'])
