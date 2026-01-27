@@ -23,7 +23,7 @@ st.title(f"Welkom, {username} 🏋️‍♂️")
 # ---------------- PROGRESS BESTAND ----------------
 if os.path.exists("progress.csv") and os.path.getsize("progress.csv") > 0:
     progress_df = pd.read_csv("progress.csv")
-    # Check kolommen, maak aan als ze ontbreken
+    # Controleer kolommen en maak aan als ze ontbreken
     for col in ["username", "dag", "cardio", "kracht"]:
         if col not in progress_df.columns:
             progress_df[col] = 0
@@ -101,7 +101,7 @@ else:
         if st.button(cardio_text):
             progress_df.loc[row_index, "cardio"] = 1
             progress_df.to_csv("progress.csv", index=False)
-            st.experimental_rerun()
+            st.success("✅ Cardio gemarkeerd als voltooid!")
 
         st.markdown(
             f"""
@@ -123,7 +123,7 @@ else:
         if st.button(kracht_text):
             progress_df.loc[row_index, "kracht"] = 1
             progress_df.to_csv("progress.csv", index=False)
-            st.experimental_rerun()
+            st.success("✅ Kracht gemarkeerd als voltooid!")
 
         st.markdown(
             f"""
