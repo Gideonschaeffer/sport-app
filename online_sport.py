@@ -1,28 +1,34 @@
 import pandas as pd
 import streamlit as st
 
-# --- Kleuren ---
-cardio_color = "#FF5733"  # Oranje/rood
-kracht_color = "#337BFF"  # Blauw
+# --- Kleuren instellen ---
+cardio_color = "#FF5733"  # Oranje/rood voor cardio
+kracht_color = "#337BFF"  # Blauw voor kracht
 
-# Excel-bestand inladen
+# --- Excel-bestand inladen ---
+# Zorg dat 'sport_schema.xlsx' in dezelfde map staat als app.py
 df = pd.read_excel("sport_schema.xlsx")
 
+# --- Titel en uitleg ---
+st.set_page_config(page_title="Sport App", layout="centered")
 st.title("🏋️‍♂️ Sport App")
 st.write("Kies een dag om te zien welke oefeningen je moet doen en bekijk de YouTube-video's.")
 
+# --- Dag selecteren ---
 dag = st.selectbox("Selecteer een dag:", df['dag'])
 oef = df[df['dag'] == dag].iloc[0]
 
 st.write(f"**Wat te doen:** {oef['wat te doen']}")
 
+# --- Rustdag check ---
 if oef['wat te doen'].lower() == 'rust':
     st.info("Vandaag is een rustdag! 😴")
 else:
+    # Links ophalen
     cardio_link = oef['cardio'] if pd.notna(oef['cardio']) and oef['cardio'].strip() != "" else None
     kracht_link = oef['kracht'] if pd.notna(oef['kracht']) and oef['kracht'].strip() != "" else None
 
-    # CSS voor link-knoppen
+    # --- CSS voor knoppen ---
     st.markdown("""
     <style>
     .btn-link {
@@ -45,15 +51,13 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-    # Alleen cardio
+    # --- Knoppen tonen ---
     if cardio_link and not kracht_link:
         st.markdown(f'<div class="btn-container"><a class="btn-link" style="background-color:{cardio_color}" href="{cardio_link}" target="_blank">Start Cardio</a></div>', unsafe_allow_html=True)
 
-    # Alleen kracht
     elif kracht_link and not cardio_link:
         st.markdown(f'<div class="btn-container"><a class="btn-link" style="background-color:{kracht_color}" href="{kracht_link}" target="_blank">Start Kracht</a></div>', unsafe_allow_html=True)
 
-    # Beide oefeningen
     elif cardio_link and kracht_link:
         st.markdown(f'''
         <div class="btn-container">
