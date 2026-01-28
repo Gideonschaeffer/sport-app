@@ -1,192 +1,159 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 import os
-import random
 
-# ================== PAGINA ==================
-st.set_page_config(
-    page_title="Sport App",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+# ---------------- PAGINA ----------------
+st.set_page_config(page_title="Sport App", layout="centered")
 
-# ================== BESTANDEN ==================
+# ---------------- BESTANDEN ----------------
 USERS_FILE = "users.csv"
 PROGRESS_FILE = "progress.csv"
-SPORT_FILE = "sport_schema.xlsx"
+TRAJECT_MAP = "trajecten"
 
-# ================== DATA ==================
-df = pd.read_excel(SPORT_FILE)
+# ---------------- TRAJECTEN ----------------
+traject_bestanden = {
+    "sport 1": "sport_schema.xlsx",
+    "sport 2": "sport_schema_2.xlsx",
+}
 
-# ================== USERS ==================
+# ---------------- USERS ----------------
 if not os.path.exists(USERS_FILE):
     pd.DataFrame(columns=["naam", "password"]).to_csv(USERS_FILE, index=False)
 
 users_df = pd.read_csv(USERS_FILE)
 
-# ================== PROGRESS ==================
+# ---------------- PROGRESS ----------------
 if not os.path.exists(PROGRESS_FILE):
-    pd.DataFrame(columns=["username", "dag", "done"]).to_csv(PROGRESS_FILE, index=False)
+    pd.DataFrame(columns=["username", "traject", "dag", "cardio", "kracht"]).to_csv(PROGRESS_FILE, index=False)
 
 progress_df = pd.read_csv(PROGRESS_FILE)
 
-# ================== SESSION ==================
+# ---------------- SESSION ----------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
+    st.session_state.traject = "sport_schema"
 
-# ================== MOTIVATIE ==================
-MOTIVATION = [
-    "🔥 Jij bent sterker dan je denkt",
-    "💪 Elke dag telt",
-    "🏆 Discipline > motivatie",
-    "🚀 Blijf doorgaan!",
-    "👊 Vandaag weer een stap vooruit"
-]
+# ---------------- REGISTRATIE ----------------
+with st.expander("➕ Account aanmaken"):
+    new_name = st.text_input("Naam")
+    new_pass = st.text_input("Wachtwoord", type="password")
 
-# ================== LOGIN / REGISTRATIE ==================
-st.title("🏋️‍♂️ Sport App")
+    if st.button("Registreren"):
+        if new_name in users_df["naam"].values:
+            st.error("Naam bestaat al")
+        else:
+            users_df.loc[len(users_df)] = [new_name, new_pass]
+            users_df.to_csv(USERS_FILE, index=False)
+            st.success("Account aangemaakt!")
 
+# ---------------- LOGIN ----------------
 if not st.session_state.logged_in:
-    tab1, tab2 = st.tabs(["🔐 Inloggen", "🆕 Registreren"])
+    st.subheader("Inloggen")
+    naam = st.text_input("Naam", key="login_name")
+    wachtwoord = st.text_input("Wachtwoord", type="password")
 
-    with tab1:
-        name = st.text_input("Naam")
-        password = st.text_input("Wachtwoord", type="password")
-
-        if st.button("Inloggen"):
-            if name in users_df["naam"].values:
-                correct = users_df.loc[users_df["naam"] == name, "password"].iloc[0]
-                if password == correct:
-                    st.session_state.logged_in = True
-                    st.session_state.username = name
-                    st.rerun()
-                else:
-                    st.error("❌ Verkeerd wachtwoord")
+    if st.button("Login"):
+        if naam in users_df["naam"].values:
+            correct = users_df.loc[users_df["naam"] == naam, "password"].iloc[0]
+            if wachtwoord == correct:
+                st.session_state.logged_in = True
+                st.session_state.username = naam
             else:
-                st.error("❌ Gebruiker bestaat niet")
+                st.error("Fout wachtwoord")
+        else:
+            st.error("Onbekende gebruiker")
 
-    with tab2:
-        new_name = st.text_input("Nieuwe naam")
-        new_pass = st.text_input("Nieuw wachtwoord", type="password")
+# ---------------- APP ----------------
+if st.session_state.logged_in:
 
-        if st.button("Account aanmaken"):
-            if new_name in users_df["naam"].values:
-                st.error("❌ Naam bestaat al")
-            else:
-                users_df.loc[len(users_df)] = [new_name, new_pass]
-                users_df.to_csv(USERS_FILE, index=False)
-                st.success("✅ Account aangemaakt")
+    username = st.session_state.username
 
-    st.stop()
+    # --------- SIDEBAR ---------
+    st.sidebar.subheader("🏁 Sporttraject")
+    st.session_state.traject = st.sidebar.selectbox(
+        "Kies traject",
+        list(traject_bestanden.keys())
+    )
 
-# ================== GEBRUIKER ==================
-username = st.session_state.username
+    cardio_color = st.sidebar.color_picker("Cardio kleur", "#FF5733")
+    kracht_color = st.sidebar.color_picker("Kracht kleur", "#337BFF")
 
-# Nieuwe gebruiker → schema aanmaken
-if username not in progress_df["username"].values:
-    rows = [{"username": username, "dag": d, "done": 0} for d in df["dag"]]
-    progress_df = pd.concat([progress_df, pd.DataFrame(rows)], ignore_index=True)
-    progress_df.to_csv(PROGRESS_FILE, index=False)
+    # --------- TRAJECT LADEN ---------
+    traject_file = os.path.join(TRAJECT_MAP, traject_bestanden[st.session_state.traject])
+    df = pd.read_excel(traject_file)
 
-user_progress = progress_df[progress_df["username"] == username]
-
-# ================== KLEUREN ==================
-st.sidebar.subheader("🎨 Jouw stijl")
-main_color = st.sidebar.color_picker("Hoofdkleur", "#ff4b4b")
-
-# ================== STATISTIEKEN ==================
-completed = user_progress[user_progress["done"] == 1]["dag"].nunique()
-total = df["dag"].nunique()
-
-st.progress(completed / total)
-st.caption(f"✅ {completed} van {total} dagen voltooid")
-
-# ================== STREAK ==================
-sorted_days = user_progress.sort_values("dag")
-streak = 0
-for _, row in sorted_days.iterrows():
-    if row["done"] == 1:
-        streak += 1
-    else:
-        break
-
-st.metric("🔥 Streak", f"{streak} dagen")
-
-# ================== BADGES ==================
-st.subheader("🏅 Badges")
-badges = completed // 5
-if badges == 0:
-    st.info("Nog geen badges – blijf gaan 💪")
-else:
-    st.success(" ".join(["🏆"] * badges))
-
-# ================== MOTIVATIE ==================
-st.info(random.choice(MOTIVATION))
-
-# ================== DAG SELECTIE ==================
-st.subheader("📅 Kies je dag")
-dag = st.selectbox("Dag", df["dag"])
-oef = df[df["dag"] == dag].iloc[0]
-
-done = user_progress[user_progress["dag"] == dag]["done"].iloc[0]
-
-# ================== DAG KAART ==================
-st.markdown(
-    f"""
-    <div style="
-        padding:20px;
-        border-radius:15px;
-        background:{main_color};
-        color:white;
-        text-align:center;
-    ">
-        <h3>Dag {dag}</h3>
-        <p><b>{oef['wat te doen']}</b></p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-# ================== DAG AFRONDEN ==================
-if not done:
-    if st.button("✅ Dag afronden"):
-        progress_df.loc[
-            (progress_df["username"] == username) &
-            (progress_df["dag"] == dag),
-            "done"
-        ] = 1
+    # --------- PROGRESS INIT ---------
+    if not ((progress_df["username"] == username) & (progress_df["traject"] == st.session_state.traject)).any():
+        rows = [
+            {"username": username, "traject": st.session_state.traject, "dag": d, "cardio": 0, "kracht": 0}
+            for d in df["dag"]
+        ]
+        progress_df = pd.concat([progress_df, pd.DataFrame(rows)])
         progress_df.to_csv(PROGRESS_FILE, index=False)
-        st.rerun()
-else:
-    st.success("🎉 Deze dag is voltooid!")
 
-st.divider()
+    user_df = progress_df[
+        (progress_df["username"] == username) &
+        (progress_df["traject"] == st.session_state.traject)
+    ]
 
-# ================= CARDIO =================
-st.subheader("🏃‍♂️ Cardio")
+    # --------- STREAK ---------
+    streak = 0
+    prev_ok = False
 
-if isinstance(oef["cardio"], str) and oef["cardio"].startswith("http"):
-    st.link_button(
-        "▶️ Open cardio video",
-        oef["cardio"]
-    )
-    st.video(oef["cardio"])
-else:
-    st.info("Geen cardio video voor deze dag")
+    for _, row in user_df.sort_values("dag").iterrows():
+        oef = df[df["dag"] == row["dag"]].iloc[0]
+        is_rust = str(oef["wat te doen"]).lower() == "rust"
+        done = row["cardio"] == 1 or row["kracht"] == 1
 
-# ================= KRACHT =================
-st.subheader("🏋️‍♂️ Kracht")
+        if done or is_rust:
+            streak = streak + 1 if prev_ok else 1
+            prev_ok = True
+        else:
+            prev_ok = False
 
-if isinstance(oef["kracht"], str) and oef["kracht"].startswith("http"):
-    st.link_button(
-        "▶️ Open kracht video",
-        oef["kracht"]
-    )
-    st.video(oef["kracht"])
-else:
-    st.info("Geen kracht video voor deze dag")
+    st.metric("🔥 Streak", f"{streak} dagen")
 
+    # --------- BADGES ---------
+    if streak >= 10:
+        st.success("🥇 Gouden streak!")
+    elif streak >= 7:
+        st.info("🥈 Zilveren streak!")
+    elif streak >= 5:
+        st.warning("🥉 Bronzen streak!")
 
-# ================== FOOTER ==================
-st.caption("📱 Mobielvriendelijk • Streaks • Motivatie • Professioneel")
+    # --------- MOTIVATIE ---------
+    if streak >= 10:
+        st.success("👑 Jij bent niet te stoppen.")
+    elif streak >= 5:
+        st.info("🔥 Discipline level hoog!")
+    elif streak >= 3:
+        st.write("💪 Lekker bezig!")
+    else:
+        st.write("🚀 Begin je streak!")
+
+    # --------- DAG ---------
+    dag = st.selectbox("Selecteer dag", df["dag"])
+    oef = df[df["dag"] == dag].iloc[0]
+
+    st.write(f"**Wat te doen:** {oef['wat te doen']}")
+
+    row_idx = user_df[user_df["dag"] == dag].index[0]
+
+    # --------- CARDIO ---------
+    if isinstance(oef["cardio"], str) and oef["cardio"].startswith("http"):
+        st.subheader("🏃‍♂️ Cardio")
+        if st.button("Cardio gedaan"):
+            progress_df.loc[row_idx, "cardio"] = 1
+            progress_df.to_csv(PROGRESS_FILE, index=False)
+        st.link_button("Open cardio video", oef["cardio"])
+        st.video(oef["cardio"])
+
+    # --------- KRACHT ---------
+    if isinstance(oef["kracht"], str) and oef["kracht"].startswith("http"):
+        st.subheader("🏋️‍♂️ Kracht")
+        if st.button("Kracht gedaan"):
+            progress_df.loc[row_idx, "kracht"] = 1
+            progress_df.to_csv(PROGRESS_FILE, index=False)
+        st.link_button("Open kracht video", oef["kracht"])
+        st.video(oef["kracht"])
