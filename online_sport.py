@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import random
 
 # ================== PAGINA ==================
 st.set_page_config(
@@ -33,6 +34,15 @@ progress_df = pd.read_csv(PROGRESS_FILE)
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
+
+# ================== MOTIVATIE ==================
+MOTIVATION = [
+    "🔥 Jij bent sterker dan je denkt",
+    "💪 Elke dag telt",
+    "🏆 Discipline > motivatie",
+    "🚀 Blijf doorgaan!",
+    "👊 Vandaag weer een stap vooruit"
+]
 
 # ================== LOGIN / REGISTRATIE ==================
 st.title("🏋️‍♂️ Sport App")
@@ -73,19 +83,35 @@ if not st.session_state.logged_in:
 # ================== GEBRUIKER ==================
 username = st.session_state.username
 
-# Nieuwe gebruiker → dagen aanmaken
+# Nieuwe gebruiker → schema aanmaken
 if username not in progress_df["username"].values:
     rows = [{"username": username, "dag": d, "done": 0} for d in df["dag"]]
     progress_df = pd.concat([progress_df, pd.DataFrame(rows)], ignore_index=True)
     progress_df.to_csv(PROGRESS_FILE, index=False)
 
-# ================== STATISTIEKEN ==================
 user_progress = progress_df[progress_df["username"] == username]
+
+# ================== KLEUREN ==================
+st.sidebar.subheader("🎨 Jouw stijl")
+main_color = st.sidebar.color_picker("Hoofdkleur", "#ff4b4b")
+
+# ================== STATISTIEKEN ==================
 completed = user_progress[user_progress["done"] == 1]["dag"].nunique()
 total = df["dag"].nunique()
 
 st.progress(completed / total)
 st.caption(f"✅ {completed} van {total} dagen voltooid")
+
+# ================== STREAK ==================
+sorted_days = user_progress.sort_values("dag")
+streak = 0
+for _, row in sorted_days.iterrows():
+    if row["done"] == 1:
+        streak += 1
+    else:
+        break
+
+st.metric("🔥 Streak", f"{streak} dagen")
 
 # ================== BADGES ==================
 st.subheader("🏅 Badges")
@@ -95,9 +121,12 @@ if badges == 0:
 else:
     st.success(" ".join(["🏆"] * badges))
 
+# ================== MOTIVATIE ==================
+st.info(random.choice(MOTIVATION))
+
 # ================== DAG SELECTIE ==================
-st.subheader("📅 Dag")
-dag = st.selectbox("Kies een dag", df["dag"])
+st.subheader("📅 Kies je dag")
+dag = st.selectbox("Dag", df["dag"])
 oef = df[df["dag"] == dag].iloc[0]
 
 done = user_progress[user_progress["dag"] == dag]["done"].iloc[0]
@@ -108,7 +137,8 @@ st.markdown(
     <div style="
         padding:20px;
         border-radius:15px;
-        background:#f7f7f7;
+        background:{main_color};
+        color:white;
         text-align:center;
     ">
         <h3>Dag {dag}</h3>
@@ -118,7 +148,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ================== AFVINKEN (OOK RUSTDAG) ==================
+# ================== DAG AFRONDEN ==================
 if not done:
     if st.button("✅ Dag afronden"):
         progress_df.loc[
@@ -133,12 +163,32 @@ else:
 
 # ================== VIDEO ==================
 if "video" in oef and pd.notna(oef["video"]):
-    st.subheader("🎥 Trainingsvideo")
-    st.video(oef["video"])
+    st.subheader("🎥 Training")
 
-# ================== EXTRA STATISTIEKEN ==================
-st.subheader("📊 Statistieken")
-st.metric("Voltooide dagen", completed)
-st.metric("Nog te gaan", total - completed)
+    col1, col2 = st.columns(2)
 
-st.caption("📱 Mobielvriendelijk • Automatisch opgeslagen • Professioneel")
+    with col1:
+        st.markdown(
+            f"""
+            <a href="{oef['video']}" target="_blank">
+                <button style="
+                    padding:12px;
+                    border-radius:10px;
+                    background:{main_color};
+                    color:white;
+                    border:none;
+                    width:100%;
+                    font-size:16px;
+                ">
+                    ▶️ Open video
+                </button>
+            </a>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with col2:
+        st.video(oef["video"])
+
+# ================== FOOTER ==================
+st.caption("📱 Mobielvriendelijk • Streaks • Motivatie • Professioneel")
