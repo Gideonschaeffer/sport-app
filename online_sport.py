@@ -161,19 +161,31 @@ if not done:
 else:
     st.success("🎉 Deze dag is voltooid!")
 
-# ================== VIDEO ==================
-if "video" in oef and pd.notna(oef["video"]):
-    st.subheader("🎥 Training video")
+st.divider()
 
-    # 1️⃣ ECHT KLIKBARE KNOP (opent YouTube / Vimeo)
+# ================= CARDIO =================
+st.subheader("🏃‍♂️ Cardio")
+
+if isinstance(oef["cardio"], str) and oef["cardio"].startswith("http"):
     st.link_button(
-        label="▶️ Open video in nieuw tabblad",
-        url=oef["video"],
-        type="primary"
+        "▶️ Open cardio video",
+        oef["cardio"]
     )
+    st.video(oef["cardio"])
+else:
+    st.info("Geen cardio video voor deze dag")
 
-    # 2️⃣ VIDEO IN DE APP
-    st.video(oef["video"])
+# ================= KRACHT =================
+st.subheader("🏋️‍♂️ Kracht")
+
+if isinstance(oef["kracht"], str) and oef["kracht"].startswith("http"):
+    st.link_button(
+        "▶️ Open kracht video",
+        oef["kracht"]
+    )
+    st.video(oef["kracht"])
+else:
+    st.info("Geen kracht video voor deze dag")
 
 
 # ================== FOOTER ==================
