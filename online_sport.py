@@ -15,23 +15,39 @@ TRAJECTEN = {
 }
 
 # ---------------- HELPERS ----------------
-def load_csv(path, columns):
+def load_or_create_csv(path, required_columns):
     if not os.path.exists(path):
-        pd.DataFrame(columns=columns).to_csv(path, index=False)
-    return pd.read_csv(path)
+        df = pd.DataFrame(columns=required_columns)
+        df.to_csv(path, index=False)
+        return df
 
-def save_csv(df, path):
+    df = pd.read_csv(path)
+
+    # 🔧 MIGRATIE: voeg ontbrekende kolommen toe
+    for col in required_columns:
+        if col not in df.columns:
+            df[col] = ""
+
+    df = df[required_columns]
     df.to_csv(path, index=False)
+    return df
 
 # ---------------- LOAD DATA ----------------
-users_df = load_csv(USERS_FILE, ["naam", "password"])
-progress_df = load_csv(PROGRESS_FILE, ["username", "traject", "dag", "done", "date"])
+users_df = load_or_create_csv(
+    USERS_FILE,
+    ["naam", "password"]
+)
+
+progress_df = load_or_create_csv(
+    PROGRESS_FILE,
+    ["username", "traject", "dag", "done", "date"]
+)
 
 # ---------------- SESSION ----------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user" not in st.session_state:
-    st.session_state.user = None
+    st.session_state.user = ""
 if "traject" not in st.session_state:
     st.session_state.traject = list(TRAJECTEN.keys())[0]
 
@@ -53,7 +69,8 @@ if not st.session_state.logged_in:
             if not match.empty:
                 st.session_state.logged_in = True
                 st.session_state.user = naam
-                st.success("Welkom terug! 💪")
+                st.success("Welkom terug 💪")
+                st.stop()
             else:
                 st.error("Onjuiste gegevens")
 
@@ -66,7 +83,7 @@ if not st.session_state.logged_in:
                 st.error("Naam bestaat al")
             else:
                 users_df.loc[len(users_df)] = [new_name, new_pw]
-                save_csv(users_df, USERS_FILE)
+                users_df.to_csv(USERS_FILE, index=False)
                 st.success("Account aangemaakt 🎉")
 
     st.stop()
@@ -75,7 +92,7 @@ if not st.session_state.logged_in:
 username = st.session_state.user
 st.sidebar.title(f"👋 {username}")
 
-st.sidebar.subheader("🏁 Sport traject")
+st.sidebar.subheader("🏁 Sporttraject")
 st.session_state.traject = st.sidebar.selectbox(
     "Kies schema",
     list(TRAJECTEN.keys())
@@ -83,38 +100,35 @@ st.session_state.traject = st.sidebar.selectbox(
 
 # ---------------- LOAD SCHEMA ----------------
 schema_file = TRAJECTEN[st.session_state.traject]
-df = pd.read_excel(schema_file)
+schema_df = pd.read_excel(schema_file)
 
 # ---------------- INIT PROGRESS ----------------
-if not (
+mask = (
     (progress_df["username"] == username) &
     (progress_df["traject"] == st.session_state.traject)
-).any():
+)
 
-    new_rows = pd.DataFrame([
-        {
-            "username": username,
-            "traject": st.session_state.traject,
-            "dag": dag,
-            "done": 0,
-            "date": ""
-        }
-        for dag in df["dag"]
-    ])
-
+if not mask.any():
+    new_rows = pd.DataFrame({
+        "username": username,
+        "traject": st.session_state.traject,
+        "dag": schema_df["dag"],
+        "done": 0,
+        "date": ""
+    })
     progress_df = pd.concat([progress_df, new_rows], ignore_index=True)
-    save_csv(progress_df, PROGRESS_FILE)
+    progress_df.to_csv(PROGRESS_FILE, index=False)
 
-# ---------------- STREAK ----------------
 user_prog = progress_df[
     (progress_df["username"] == username) &
     (progress_df["traject"] == st.session_state.traject)
 ]
 
+# ---------------- STREAK ----------------
 dates = sorted([
     datetime.strptime(d, "%Y-%m-%d")
     for d in user_prog["date"]
-    if d
+    if isinstance(d, str) and d
 ])
 
 streak = 0
@@ -128,23 +142,19 @@ if dates:
 
 # ---------------- BADGES ----------------
 badges = []
-if streak >= 5:
-    badges.append("🥉 5-dagen streak")
-if streak >= 10:
-    badges.append("🥈 10-dagen streak")
-if streak >= 20:
-    badges.append("🥇 20-dagen streak")
+if streak >= 5: badges.append("🥉 5 dagen")
+if streak >= 10: badges.append("🥈 10 dagen")
+if streak >= 20: badges.append("🥇 20 dagen")
 
-# ---------------- HEADER ----------------
-st.title("🔥 Jouw sportdag")
+# ---------------- UI ----------------
+st.title("🔥 Vandaag")
 st.metric("🔥 Streak", f"{streak} dagen")
 
 if badges:
     st.success("🏆 Badges: " + " | ".join(badges))
 
-# ---------------- DAG SELECT ----------------
-dag = st.selectbox("Selecteer dag", df["dag"])
-oef = df[df["dag"] == dag].iloc[0]
+dag = st.selectbox("Selecteer dag", schema_df["dag"])
+oef = schema_df[schema_df["dag"] == dag].iloc[0]
 
 row_idx = progress_df[
     (progress_df["username"] == username) &
@@ -152,10 +162,9 @@ row_idx = progress_df[
     (progress_df["dag"] == dag)
 ].index[0]
 
-# ---------------- CONTENT ----------------
 st.subheader(oef["wat te doen"])
 
-# VIDEO EMBEDS
+# ---------------- VIDEO'S ----------------
 if pd.notna(oef.get("cardio")) and oef["cardio"]:
     st.markdown("### 🏃 Cardio")
     st.video(oef["cardio"])
@@ -166,17 +175,17 @@ if pd.notna(oef.get("kracht")) and oef["kracht"]:
 
 # ---------------- RUSTDAG ----------------
 if oef.get("rust", False):
-    st.info("😴 Rustdag — telt mee voor je streak!")
+    st.info("😴 Rustdag — telt mee voor je streak")
 
 # ---------------- AFVINKEN ----------------
 if progress_df.loc[row_idx, "done"] == 0:
     if st.button("✅ Dag afronden"):
         progress_df.loc[row_idx, "done"] = 1
         progress_df.loc[row_idx, "date"] = datetime.now().strftime("%Y-%m-%d")
-        save_csv(progress_df, PROGRESS_FILE)
-        st.success("Goed bezig! 🔥")
+        progress_df.to_csv(PROGRESS_FILE, index=False)
+        st.success("Top gedaan 🔥")
 else:
-    st.success("Deze dag is afgerond 🎉")
+    st.success("Dag voltooid 🎉")
 
 # ---------------- STATISTIEKEN ----------------
 st.divider()
@@ -184,13 +193,13 @@ completed = user_prog["done"].sum()
 total = len(user_prog)
 
 st.progress(completed / total)
-st.write(f"📊 {completed} van {total} dagen voltooid")
+st.write(f"📊 {completed} van {total} dagen afgerond")
 
 # ---------------- MOTIVATIE ----------------
 quotes = [
-    "Elke dag telt 💪",
-    "Rust is ook training 😴",
-    "Je bent verder dan gisteren 🔥",
-    "Consistency beats motivation 🏆"
+    "Consistency beats motivation 💪",
+    "Rust is ook progress 😴",
+    "Je bent sterker dan gisteren 🔥",
+    "Gewoon doorgaan 🏆"
 ]
 st.info(quotes[streak % len(quotes)])
