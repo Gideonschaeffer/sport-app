@@ -1,166 +1,144 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import os
 
-# ---------------- PAGINA ----------------
-st.set_page_config(page_title="Sport App", layout="centered")
+# ================== PAGINA ==================
+st.set_page_config(
+    page_title="Sport App",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-# ---------------- BESTANDEN ----------------
+# ================== BESTANDEN ==================
 USERS_FILE = "users.csv"
 PROGRESS_FILE = "progress.csv"
 SPORT_FILE = "sport_schema.xlsx"
 
-# ---------------- DATA ----------------
+# ================== DATA ==================
 df = pd.read_excel(SPORT_FILE)
 
-# ---------------- USERS ----------------
+# ================== USERS ==================
 if not os.path.exists(USERS_FILE):
     pd.DataFrame(columns=["naam", "password"]).to_csv(USERS_FILE, index=False)
+
 users_df = pd.read_csv(USERS_FILE)
-users_df.columns = [col.strip() for col in users_df.columns]
 
-# ---------------- PROGRESS ----------------
+# ================== PROGRESS ==================
 if not os.path.exists(PROGRESS_FILE):
-    pd.DataFrame(columns=["username", "dag", "cardio", "kracht", "rust_done"]).to_csv(PROGRESS_FILE, index=False)
-progress_df = pd.read_csv(PROGRESS_FILE)
-progress_df.columns = [col.strip() for col in progress_df.columns]
+    pd.DataFrame(columns=["username", "dag", "done"]).to_csv(PROGRESS_FILE, index=False)
 
-# ---------------- SESSION STATE ----------------
+progress_df = pd.read_csv(PROGRESS_FILE)
+
+# ================== SESSION ==================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
 
-# ---------------- FUNCTIES ----------------
-def register_user(name, password):
-    global users_df
-    if not name or not password:
-        st.warning("⚠️ Vul zowel naam als wachtwoord in")
-        return
-    if name in users_df["naam"].values:
-        st.error("❌ Naam al in gebruik")
-        return
-    new_user = pd.DataFrame([{"naam": name, "password": password}])
-    users_df = pd.concat([users_df, new_user], ignore_index=True)
-    users_df.to_csv(USERS_FILE, index=False)
-    st.success(f"✅ Account aangemaakt voor {name}!")
+# ================== LOGIN / REGISTRATIE ==================
+st.title("🏋️‍♂️ Sport App")
 
-def login_user(name, password):
-    if name not in users_df["naam"].values:
-        st.error("❌ Onbekende gebruiker")
-        return False
-    correct_password = users_df.loc[users_df["naam"] == name, "password"].iloc[0]
-    if password != correct_password:
-        st.error("❌ Onjuist wachtwoord")
-        return False
-    st.session_state.logged_in = True
-    st.session_state.username = name
-    st.experimental_rerun()
-    return True
+if not st.session_state.logged_in:
+    tab1, tab2 = st.tabs(["🔐 Inloggen", "🆕 Registreren"])
 
-def initialize_progress(username):
-    global progress_df
-    if username not in progress_df["username"].values:
-        new_rows = pd.DataFrame([{"username": username, "dag": dag, "cardio": 0, "kracht": 0, "rust_done":0} for dag in df["dag"].unique()])
-        progress_df = pd.concat([progress_df, new_rows], ignore_index=True)
-        progress_df.to_csv(PROGRESS_FILE, index=False)
+    with tab1:
+        name = st.text_input("Naam")
+        password = st.text_input("Wachtwoord", type="password")
 
-def mark_done(username, dag, oefening):
-    global progress_df
-    idx = progress_df[(progress_df["username"] == username) & (progress_df["dag"] == dag)].index[0]
-    progress_df.loc[idx, oefening] = 1
+        if st.button("Inloggen"):
+            if name in users_df["naam"].values:
+                correct = users_df.loc[users_df["naam"] == name, "password"].iloc[0]
+                if password == correct:
+                    st.session_state.logged_in = True
+                    st.session_state.username = name
+                    st.rerun()
+                else:
+                    st.error("❌ Verkeerd wachtwoord")
+            else:
+                st.error("❌ Gebruiker bestaat niet")
+
+    with tab2:
+        new_name = st.text_input("Nieuwe naam")
+        new_pass = st.text_input("Nieuw wachtwoord", type="password")
+
+        if st.button("Account aanmaken"):
+            if new_name in users_df["naam"].values:
+                st.error("❌ Naam bestaat al")
+            else:
+                users_df.loc[len(users_df)] = [new_name, new_pass]
+                users_df.to_csv(USERS_FILE, index=False)
+                st.success("✅ Account aangemaakt")
+
+    st.stop()
+
+# ================== GEBRUIKER ==================
+username = st.session_state.username
+
+# Nieuwe gebruiker → dagen aanmaken
+if username not in progress_df["username"].values:
+    rows = [{"username": username, "dag": d, "done": 0} for d in df["dag"]]
+    progress_df = pd.concat([progress_df, pd.DataFrame(rows)], ignore_index=True)
     progress_df.to_csv(PROGRESS_FILE, index=False)
 
-def get_completed_days(username):
-    done = progress_df[
-        (progress_df["username"] == username) &
-        ((progress_df["cardio"] == 1) | (progress_df["kracht"] == 1) | (progress_df["rust_done"]==1))
-    ]["dag"].nunique()
-    return done
+# ================== STATISTIEKEN ==================
+user_progress = progress_df[progress_df["username"] == username]
+completed = user_progress[user_progress["done"] == 1]["dag"].nunique()
+total = df["dag"].nunique()
 
-# ---------------- REGISTRATIE ----------------
-with st.expander("Nieuwe gebruiker registreren"):
-    new_name = st.text_input("Naam:", key="reg_name")
-    new_password = st.text_input("Wachtwoord:", type="password", key="reg_pass")
-    if st.button("Registreren"):
-        register_user(new_name, new_password)
+st.progress(completed / total)
+st.caption(f"✅ {completed} van {total} dagen voltooid")
 
-# ---------------- LOGIN ----------------
-if not st.session_state.logged_in:
-    st.subheader("Inloggen")
-    login_name = st.text_input("Naam:", key="login_name")
-    login_pass = st.text_input("Wachtwoord:", type="password", key="login_pass")
-    if st.button("Inloggen"):
-        login_user(login_name, login_pass)
+# ================== BADGES ==================
+st.subheader("🏅 Badges")
+badges = completed // 5
+if badges == 0:
+    st.info("Nog geen badges – blijf gaan 💪")
+else:
+    st.success(" ".join(["🏆"] * badges))
 
-# ---------------- HOOFDAPP ----------------
-if st.session_state.logged_in:
-    username = st.session_state.username
-    st.title(f"Welkom, {username} 🏋️‍♂️")
+# ================== DAG SELECTIE ==================
+st.subheader("📅 Dag")
+dag = st.selectbox("Kies een dag", df["dag"])
+oef = df[df["dag"] == dag].iloc[0]
 
-    # INITIALISEER PROGRESSIE
-    initialize_progress(username)
+done = user_progress[user_progress["dag"] == dag]["done"].iloc[0]
 
-    # KLEUREN
-    st.sidebar.subheader("Kies je kleuren:")
-    cardio_color = st.sidebar.color_picker("Cardio kleur", "#FF5733")
-    kracht_color = st.sidebar.color_picker("Kracht kleur", "#337BFF")
-    rust_color = st.sidebar.color_picker("Rustdag kleur", "#A9A9A9")
+# ================== DAG KAART ==================
+st.markdown(
+    f"""
+    <div style="
+        padding:20px;
+        border-radius:15px;
+        background:#f7f7f7;
+        text-align:center;
+    ">
+        <h3>Dag {dag}</h3>
+        <p><b>{oef['wat te doen']}</b></p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-    # VOORTGANG & BADGES
-    completed_days = get_completed_days(username)
-    total_days = df["dag"].nunique()
-    st.progress(completed_days / total_days)
-    st.write(f"✅ {completed_days} van {total_days} dagen voltooid")
-    badges = completed_days // 5
-    if badges > 0:
-        st.success("🏅 " + " ".join(["🎉" for _ in range(badges)]) + f" {badges} badge(s) verdiend!")
+# ================== AFVINKEN (OOK RUSTDAG) ==================
+if not done:
+    if st.button("✅ Dag afronden"):
+        progress_df.loc[
+            (progress_df["username"] == username) &
+            (progress_df["dag"] == dag),
+            "done"
+        ] = 1
+        progress_df.to_csv(PROGRESS_FILE, index=False)
+        st.rerun()
+else:
+    st.success("🎉 Deze dag is voltooid!")
 
-    # DAG SELECTEREN
-    dag = st.selectbox("Selecteer een dag:", df["dag"].unique())
-    oef = df[df["dag"] == dag].iloc[0]
-    st.write(f"**Wat te doen:** {oef['wat te doen']}")
+# ================== VIDEO ==================
+if "video" in oef and pd.notna(oef["video"]):
+    st.subheader("🎥 Trainingsvideo")
+    st.video(oef["video"])
 
-    row_idx = progress_df[(progress_df["username"]==username) & (progress_df["dag"]==dag)].index[0]
+# ================== EXTRA STATISTIEKEN ==================
+st.subheader("📊 Statistieken")
+st.metric("Voltooide dagen", completed)
+st.metric("Nog te gaan", total - completed)
 
-    # ---------------- RUSTDAG ----------------
-    if str(oef["wat te doen"]).lower() == "rust":
-        rust_done = progress_df.loc[row_idx, "rust_done"]
-        if st.button("✅ Rustdag afronden" if not rust_done else "Rustdag ✅", key=f"rust_{dag}"):
-            mark_done(username, dag, "rust_done")
-            st.success("♻️ Rustdag afgevinkt!")
-    else:
-        cardio_link = oef["cardio"] if pd.notna(oef["cardio"]) and str(oef["cardio"]).strip() else None
-        kracht_link = oef["kracht"] if pd.notna(oef["kracht"]) and str(oef["kracht"]).strip() else None
-        video_link = oef["video"] if "video" in oef and pd.notna(oef["video"]) else None
-
-        # CSS
-        st.markdown("""
-        <style>
-        .btn {display:inline-block;padding:12px 28px;font-size:16px;color:white !important;text-decoration:none;border-radius:10px;margin:6px 0;transition:0.2s ease-in-out;}
-        .btn:hover {transform:scale(1.05);opacity:0.85;}
-        .btn-container {text-align:center;margin-top:10px;}
-        </style>
-        """, unsafe_allow_html=True)
-
-        # CARDIO
-        if cardio_link:
-            done = progress_df.loc[row_idx, "cardio"]
-            btn_text = "🏃‍♂️ Cardio ✅" if done else "🏃‍♂️ Start Cardio"
-            if st.button(f"Cardio-{dag}", key=f"cardio_{dag}") and not done:
-                mark_done(username, dag, "cardio")
-                st.success("✅ Cardio voltooid!")
-            st.markdown(f'<div class="btn-container"><a class="btn" style="background-color:{cardio_color}" href="{cardio_link}" target="_blank">{btn_text}</a></div>', unsafe_allow_html=True)
-
-        # KRACHT
-        if kracht_link:
-            done = progress_df.loc[row_idx, "kracht"]
-            btn_text = "🏋️‍♂️ Kracht ✅" if done else "🏋️‍♂️ Start Kracht"
-            if st.button(f"Kracht-{dag}", key=f"kracht_{dag}") and not done:
-                mark_done(username, dag, "kracht")
-                st.success("✅ Kracht voltooid!")
-            st.markdown(f'<div class="btn-container"><a class="btn" style="background-color:{kracht_color}" href="{kracht_link}" target="_blank">{btn_text}</a></div>', unsafe_allow_html=True)
-
-        # VIDEO IN DE APP
-        if video_link:
-            st.subheader("Bekijk video:")
-            st.video(video_link)
+st.caption("📱 Mobielvriendelijk • Automatisch opgeslagen • Professioneel")
