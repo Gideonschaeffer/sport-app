@@ -163,32 +163,18 @@ else:
 
 # ================== VIDEO ==================
 if "video" in oef and pd.notna(oef["video"]):
-    st.subheader("🎥 Training")
+    st.subheader("🎥 Training video")
 
-    col1, col2 = st.columns(2)
+    # 1️⃣ ECHT KLIKBARE KNOP (opent YouTube / Vimeo)
+    st.link_button(
+        label="▶️ Open video in nieuw tabblad",
+        url=oef["video"],
+        type="primary"
+    )
 
-    with col1:
-        st.markdown(
-            f"""
-            <a href="{oef['video']}" target="_blank">
-                <button style="
-                    padding:12px;
-                    border-radius:10px;
-                    background:{main_color};
-                    color:white;
-                    border:none;
-                    width:100%;
-                    font-size:16px;
-                ">
-                    ▶️ Open video
-                </button>
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
+    # 2️⃣ VIDEO IN DE APP
+    st.video(oef["video"])
 
-    with col2:
-        st.video(oef["video"])
 
 # ================== FOOTER ==================
 st.caption("📱 Mobielvriendelijk • Streaks • Motivatie • Professioneel")
